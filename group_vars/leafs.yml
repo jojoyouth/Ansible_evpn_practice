@@ -1,0 +1,15 @@
+---
+type: leaf
+uplink_ports: ['swp59', 'swp60', 'swp61', 'swp62']
+peerlink_ports: ['swp63', 'swp64']
+mlag_peer_vlan: 4094
+asn_mode: 'unique'
+bgp_base_asn: 65000
+
+access_connections:
+  - port: swp1
+    vlan: 10
+  - port: swp2
+    vlan: 20
+  - port: swp3
+    vlan: 30

@@ -1,0 +1,17 @@
+---
+- name: "Overlay | Generate Script"
+  template:
+    src: overlay_config.j2
+    dest: /etc/cumulus/overlay_config.sh
+    mode: '0755'
+- name: "Run Script"
+  command: "bash /etc/cumulus/overlay_config.sh"
+  register: result
+- name: result
+  debug:
+    var: result.stdout_lines
+
+- name: "Apply Changes"
+  command: "nv config apply -y"
+...
+

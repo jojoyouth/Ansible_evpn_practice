@@ -1,0 +1,114 @@
+access_connections:
+- port: swp1
+  vlan: 10
+- port: swp2
+  vlan: 20
+- port: swp3
+  vlan: 30
+anycast-mac: 44:38:39:BE:EF:12
+asn_mode: unique
+bgp_base_asn: 65000
+common_nameserver:
+- 8.8.8.8
+- 4.2.2.2
+common_search_domains:
+- .
+group_names:
+- leafs
+- switchs
+groups:
+  all:
+  - server01
+  - server02
+  - server03
+  - server04
+  - server05
+  - server06
+  - server07
+  - server08
+  - fw01
+  - fw02
+  - leaf01
+  - leaf02
+  - leaf03
+  - leaf04
+  - spine01
+  - spine02
+  - spine03
+  - spine04
+  - border01
+  - border02
+  borders:
+  - border01
+  - border02
+  fws:
+  - fw01
+  - fw02
+  leafs:
+  - leaf01
+  - leaf02
+  - leaf03
+  - leaf04
+  servers:
+  - server01
+  - server02
+  - server03
+  - server04
+  - server05
+  - server06
+  - server07
+  - server08
+  spines:
+  - spine01
+  - spine02
+  - spine03
+  - spine04
+  switchs:
+  - leaf01
+  - leaf02
+  - leaf03
+  - leaf04
+  - spine01
+  - spine02
+  - spine03
+  - spine04
+  - border01
+  - border02
+  ungrouped: []
+inventory_dir: /home/ubuntu/ansible
+inventory_file: /home/ubuntu/ansible/hosts.ini
+inventory_hostname: leaf01
+inventory_hostname_short: leaf01
+mlag_peer_vlan: 4094
+peerlink_ports:
+- swp63
+- swp64
+playbook_dir: /home/ubuntu/ansible/playbooks
+spine_asn: 65020
+tenant_vlans:
+  10:
+    gateway: 10.1.10.0/24
+    vni: 10
+    vrf: RED
+    vrr_ip: 10.1.10.1/24
+  20:
+    gateway: 10.1.20.0/24
+    vni: 20
+    vrf: RED
+    vrr_ip: 10.1.20.1/24
+  30:
+    gateway: 10.1.30.0/24
+    vni: 30
+    vrf: BLUE
+    vrr_ip: 10.1.30.1/24
+tenant_vrfs:
+  BLUE:
+    vni: 4002
+  RED:
+    vni: 4001
+type: leaf
+uplink_ports:
+- swp59
+- swp60
+- swp61
+- swp62

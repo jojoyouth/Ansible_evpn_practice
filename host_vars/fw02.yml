@@ -1,0 +1,5 @@
+mgmt_ip: 10.2.255.110
+vlan101_ip: 192.168.101.253
+vlan102_ip: 192.168.102.253
+vrrp_state: BACKUP
+vrrp_priority: 90

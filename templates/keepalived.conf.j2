@@ -1,0 +1,34 @@
+global_defs {
+    router_id {{ inventory_hostname }}
+    vrrp_skip_check_adv_addr
+}
+
+vrrp_instance VI_RED {
+    state {{ vrrp_state }}
+    interface bond0.101
+    virtual_router_id 101
+    priority {{ vrrp_priority }}
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1234
+    }
+    virtual_ipaddress {
+        192.168.101.254/24
+    }
+}
+
+vrrp_instance VI_BLUE {
+    state {{ vrrp_state }}
+    interface bond0.102
+    virtual_router_id 102
+    priority {{ vrrp_priority }}
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1234
+    }
+    virtual_ipaddress {
+        192.168.102.254/24
+    }
+}

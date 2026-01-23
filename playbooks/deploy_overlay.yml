@@ -1,0 +1,10 @@
+---
+- name: "Deployment | EVPN VXLAN Overlay Fabric"
+  hosts: leafs, borders
+  gather_facts: no
+  become: yes
+
+  roles:
+    - common_logic
+    - overlay_fabric
+...

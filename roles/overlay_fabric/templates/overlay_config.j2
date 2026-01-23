@@ -1,0 +1,54 @@
+nv set system global anycast-mac {{ vars['anycast-mac'] }}
+
+{% for vrf_name, vrf_data in tenant_vrfs.items() %}
+nv set vrf {{ vrf_name }} table auto
+nv set vrf {{ vrf_name }} evpn vni {{ vrf_data.vni }}
+nv set vrf {{ vrf_name }} router bgp autonomous-system {{ my_asn }}
+{% endfor %}
+
+{% for vlan_id, vlan_data in tenant_vlans.items() %}
+nv set interface vlan{{ vlan_id }} vlan {{ vlan_id }}
+nv set interface vlan{{ vlan_id }} ip vrf {{ vlan_data.vrf }}
+{% set ip_net = vlan_data.gateway.split('.')[0:3] | join('.') %}
+nv set interface vlan{{ vlan_id }} ip address {{ ip_net }}.{{ my_id }}/24
+nv set interface vlan{{ vlan_id }} ip vrr address {{ vlan_data.vrr_ip }}
+nv set interface vlan{{ vlan_id }} ip vrr state up
+nv set bridge domain br_default vlan {{ vlan_id }} vni {{ vlan_data.vni }}
+nv set evpn route-advertise svi-ip on
+nv set evpn enable on
+{% endfor %}
+
+{% if access_connections is defined %}
+{% for connection in access_connections %}
+{% set port_id = connection.port | regex_replace('[^0-9]', '') %}
+nv set interface bond{{ port_id }} bond member {{ connection.port }}
+nv set interface bond{{ port_id }} bond mlag id {{ port_id }}
+nv set interface bond{{ port_id }} bridge domain br_default access {{ connection.vlan }}
+{% endfor %}
+{% endif %}
+
+{% if external_peering is defined %}
+{% for peering in external_peering %}
+{% set bond_idx = peering.port | regex_replace('[^0-9]', '') %}
+{% set vlan_list = peering.peering_configs | map(attribute='vlan') | join(',') %}
+nv set interface bond{{ bond_idx }} bond member {{ peering.port }}
+nv set interface bond{{ bond_idx }} bond mlag id {{ bond_idx }}
+nv set interface bond{{ bond_idx }} bridge domain br_default vlan tagged {{ vlan_list }}
+nv set interface bond{{ bond_idx }} bridge domain br_default
+
+{% for config in peering.peering_configs %}
+{% set my_physical_ip = peering_ips[config.vlan] %}
+{% set ip_prefix = my_physical_ip.split('.')[0:3] | join('.') %}
+nv set interface vlan{{ config.vlan }} vlan {{ config.vlan }}
+nv set interface vlan{{ config.vlan }} ip vrf {{ config.vrf }}
+nv set interface vlan{{ config.vlan }} ip address {{ my_physical_ip }}
+nv set interface vlan{{ config.vlan }} ip vrr address {{ ip_prefix }}.1/24
+nv set interface vlan{{ config.vlan }} ip vrr state up
+nv set vrf {{ config.vrf }} router static 0.0.0.0/0 via {{ config.fw_vip.split('/')[0] }} 
+nv set vrf {{ config.vrf }} router bgp address-family ipv4-unicast redistribute static enable on
+nv set vrf {{ config.vrf }} router bgp address-family ipv4-unicast route-export to-evpn enable on
+nv set vrf {{ config.vrf }} router bgp address-family ipv4-unicast route-export to-evpn default-route-origination on
+{% endfor %}
+{% endfor %}
+{% endif %}
+

@@ -1,0 +1,72 @@
+---
+
+- name: Build Underlay
+  hosts: switchs
+  become: true
+  gather_facts: no
+  vars:
+    my_id: "{{ inventory_hostname[-2:] | int }}"
+  tasks:
+    - name: Defined Uplink Port for Leaf&Border
+      set_fact:
+        uplink_ports: [ 'swp59', 'swp60', 'swp61', 'swp62' ]
+      when: "'spine' not in inventory_hostname"
+
+    - name: Defined Uplink Port for Spine
+      set_fact:
+        uplink_ports: [ 'swp1', 'swp2', 'swp3', 'swp4', 'swp5', 'swp6' ]
+      when: "'spine' in inventory_hostname"
+
+    - name: Define Role-based variables
+      set_fact:
+        loopback_ip: >-
+          {% if 'leaf' in inventory_hostname %}10.10.10.{{ 10 + (my_id | int) }}
+          {% elif 'spine' in inventory_hostname %}10.10.10.{{ 20 + (my_id | int) }}
+          {% elif 'border' in inventory_hostname %}10.10.10.{{ 30 + (my_id | int) }}
+          {% endif %}
+
+        my_asn: >-
+          {% if 'spine' in inventory_hostname %}65020
+          {% else %}{{ 65000 + (10 + (my_id | int) if 'leaf' in inventory_hostname else 30 + (my_id | int))}}
+          {% endif %}
+
+    - name: Configure Loopback Interface
+      command: "nv set interface lo ip address {{ loopback_ip | trim }}/32"
+
+    - name: Bring up interface
+      command: "nv set interface {{ item }} link state up"
+      loop: "{{ uplink_ports }}"
+
+    - name: Configure BGP Global Setting
+      command: "{{ item }}"
+      loop:
+        - " nv set vrf default router bgp autonomous-system {{ my_asn }} "
+        - " nv set vrf default router bgp router-id {{ loopback_ip | trim }} "
+        - " nv set vrf default router bgp address-family ipv4-unicast enable on "
+        - " nv set vrf default router bgp address-family l2vpn-evpn enable on "
+        - " nv set vrf default router bgp address-family ipv4-unicast multipaths ebgp 64 "
+      
+    - name: Configure BFD Profile
+      command: "{{ item }}"
+      loop:
+        - " nv set vrf default router bgp neighbor bgp-underlay-bfd bfd enable on  "
+        - " nv set vrf default router bgp neighbor bgp-underlay-bfd detect-multiplier 3 "
+        - " nv set vrf default router bgp neighbor bgp-underlay-bfd min-rx-interval 300 "
+        - " nv set vrf default router bgp neighbor bgp-underlay-bfd min-tx-interval 300 "
+      
+    - name: Configure BGP Peer Group
+      command: "{{ item }}"
+      loop:
+        - " nv set vrf default router bgp peer-group underlay address-family l2vpn-evpn enable on "
+        - " nv set vrf default router bgp peer-group underlay bfd profile bgp-underlay-bfd "
+        - " nv set vrf default router bgp peer-group underlay remote-as external "
+
+    - name: Configure BGP Neighbors
+      command: " nv set vrf default router bgp neighbor {{ item }} peer-group underlay "
+      loop: "{{ uplink_ports }}"
+    - name: Configure BGP Neighbors
+      command: " nv set vrf default router bgp neighbor {{ item }}  type unnumbered "
+      loop: "{{ uplink_ports }}"
+    - name: APPLY CONFIGURATION
+      command: nv config apply -y
+...

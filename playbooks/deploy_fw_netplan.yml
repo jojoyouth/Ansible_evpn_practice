@@ -1,0 +1,17 @@
+---
+- name: deploy netplan
+  hosts: fws
+  become: yes
+  tasks:
+    - name: use fw_netplan.j2
+      template:
+        src: ../templates/fw_netplan.j2
+        dest: /etc/netplan/99-custom-config.yaml
+        owner: root
+        group: root
+        mode: '0600'
+      notify: apply
+  handlers:
+    - name: apply
+      command: netplan apply
+...

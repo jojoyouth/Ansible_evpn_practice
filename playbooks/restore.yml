@@ -1,0 +1,65 @@
+---
+- name: Factory Reset (Cumulus NVUE)
+  hosts: switchs
+  become: true
+  gather_facts: no
+  tasks:
+    - name: Get inst
+      command: nv show interface -o json
+      register: int_current
+      changed_when: false
+    - name: Unset Subinterface
+      command: "nv unset interface {{ item }}"
+      loop: "{{ (int_current.stdout | from_json).keys() | list | select('search', '\\.') | list }}"
+      when: int_current.stdout != ""
+      ignore_errors: yes
+    - name: Unset Bonds
+      command: "nv unset interface {{ item }}"
+      loop: "{{ (int_current.stdout | from_json).keys() | list | select('match', '^bond[0-9]+$') | list }}"
+      when: int_current.stdout != ""
+      ignore_errors: yes
+    - name: "Restore | Clear BGP in default VRF"
+      command: nv unset vrf default router
+    - name: Remove Peerlink Sub-interface
+      command: nv unset interface peerlink.4094
+    - name: Remove Peerlink interface
+      command: nv unset interface peerlink
+    - name: Remove L3 routing
+      command: nv unset router
+    - name: Remove MLAG Configuration
+      command: nv unset mlag
+    - name: Remove EVPN
+      command: nv unset evpn
+    - name: Remove VXLAN/NVE
+      command: nv unset nve
+    - name: Remove Vlan
+      command: nv unset interface vlan1-4094
+      ignore_errors: yes
+    - name: Remove Shared-MAC
+      command: nv unset system global anycast-mac
+      ignore_errors: yes
+    - name: Remove L2 switching
+      command: nv unset bridge
+    - name: Remove Physical interface configs
+      command: "nv unset interface swp1-64"
+      ignore_errors: yes
+    - name: Get current VRF list
+      command: nv show vrf -o json
+      register: vrf_current
+      changed_when: false
+    - name: Remove Custom VRFs
+      command: "nv unset vrf {{ item }}"
+      loop: "{{ (vrf_current.stdout | from_json).keys() | list | difference(['default', 'mgmt']) if vrf_current.stdout else [] }}"
+    - name: Remove loopback interface
+      command: nv unset interface lo
+    - name: Ensure Mgmt Route exists
+      command: nv set vrf mgmt router static 0.0.0.0/0 via 10.2.255.254
+    - name: Ensure Timezone is correct
+      command: nv set system timezone Asia/Taipei
+    - name: APPLY CHANGES
+      command: nv config apply -y
+      register: commit_result
+    - name: SHOW RESULT
+      debug:
+        msg: "{{ commit_result.stdout_lines }}"
+...

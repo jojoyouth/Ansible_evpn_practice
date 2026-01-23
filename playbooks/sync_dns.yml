@@ -1,0 +1,19 @@
+---
+- name: sync dns
+  hosts: servers, fws
+  become: yes
+  tasks:
+    - name: rm /etc/resolv.conf
+      ansible.builtin.file:
+        path: /etc/resolv.conf
+        state: absent
+    - name: use resolv.conf.j2
+      ansible.builtin.template:
+        src: ../templates/resolv.conf.j2
+        dest: /etc/resolv.conf
+        owner: root
+        group: root
+        mode: '0644'
+        backup: yes
+
+...

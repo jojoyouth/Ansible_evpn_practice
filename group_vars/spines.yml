@@ -1,0 +1,4 @@
+---
+type: spine
+uplink_ports: ['swp1', 'swp2', 'swp3', 'swp4', 'swp5', 'swp6']
+asn_mode: 'static'

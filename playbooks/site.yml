@@ -1,0 +1,11 @@
+---
+
+- name: Cumulus Data Center Deployment
+  hosts: switchs
+  gather_facts: no
+  become: true
+  roles:
+    - common_logic
+    - underlay_fabric
+
+...

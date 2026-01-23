@@ -1,0 +1,83 @@
+---
+- name: Debug - Verify variables
+  debug:
+    msg: "Hostname: {{ inventory_hostname }}, ASN: {{ my_asn }}, MLAG Prio: {{ mlag_prio | default('N/A') }}"
+
+- name: Configure Loopback Interface
+  command: "nv set interface lo ip address {{ router_id }}/32"
+
+- name: Configure Physical Interfaces (Global Jumbo Frame)
+  command: "{{ item }}"
+  loop:
+    - "nv set interface swp1-64 link mtu 9216"
+    - "nv set interface swp1-64 link state up"
+
+- name: Configure Uplink Specifics (IPv6 for BGP)
+  command: "{{ item }}"
+  loop:
+    - "nv set interface {{ uplink_ports | join(',') }} ip ipv6 enable on"
+
+- name: Configure BGP Global Settings
+  command: "{{ item }}"
+  loop:
+    - "nv set router bgp autonomous-system {{ my_asn }}"
+    - "nv set router bgp router-id {{ router_id }}"
+    - "nv set vrf default router bgp address-family ipv4-unicast enable on"
+    - "nv set vrf default router bgp address-family ipv4-unicast multipath ebgp 64"
+    - "nv set router bgp graceful-restart mode helper-only"
+    - "nv set vrf default router bgp address-family ipv4-unicast redistribute connected enable on"
+
+- name: Configure Underlay Peer Group
+  command: "{{ item }}"
+  loop:
+    - "nv set vrf default router bgp peer-group underlay remote-as external"
+    - "nv set vrf default router bgp peer-group underlay address-family l2vpn-evpn enable on"
+    - "nv set vrf default router bgp peer-group underlay bfd enable on"
+    - "nv set vrf default router bgp peer-group underlay bfd min-rx-interval 300"
+    - "nv set vrf default router bgp peer-group underlay bfd min-tx-interval 300"
+    - "nv set vrf default router bgp peer-group underlay bfd detect-multiplier 3"
+    
+
+- name: Apply Peer Group to Uplinks
+  command: "{{ item }}"
+  loop:
+    - "nv set vrf default router bgp neighbor {{ uplink_ports | join(',') }} type unnumbered"
+    - "nv set vrf default router bgp neighbor {{ uplink_ports | join(',') }} peer-group underlay"
+
+- block:
+  - name: Configure Peerlink Interface (Physical)
+    command: "{{ item }}"
+    loop:
+      - "nv set interface peerlink bond member {{ peerlink_ports | join(',') }}"
+      - "nv set interface peerlink type peerlink"
+      - "nv set interface peerlink link mtu 9216"
+      - "nv set interface peerlink link state up"
+      - "nv set interface {{ peerlink_ports | join(',') }} link state up"
+
+  - name: Configure MLAG Global Parameters
+    command: "{{ item }}"
+    loop:
+      - "nv set mlag mac-address 44:38:39:BE:EF:{{ mlag_master_id }}"
+      - "nv set mlag priority {{ mlag_prio }}"
+      - "nv set mlag peer-ip linklocal"
+      - "nv set mlag backup {{ mlag_backup_ip }}"
+      - "nv set mlag enable on"
+
+  - name: Configure Peerlink L3 VLAN
+    command: "{{ item }}"
+    loop:
+      - "nv set interface peerlink.{{ mlag_peer_vlan }} type sub"
+      - "nv set interface peerlink.{{ mlag_peer_vlan }} vlan {{ mlag_peer_vlan }}"
+      - "nv set interface peerlink.{{ mlag_peer_vlan }} ip address 169.254.1.{{ 1 if is_odd else 2 }}/30"
+      - "nv set interface peerlink.{{ mlag_peer_vlan }} link state up"
+  
+  - name: Configure NVE Shared IP
+    command: "nv set nve vxlan mlag shared-address {{ mlag_shared_ip }}"
+  - name: Enable NVE Interface
+    command: "nv set nve vxlan enable on"
+  when: type != 'spine'
+
+- name: APPLY CONFIGURATION
+  command: nv config apply -y
+
+...

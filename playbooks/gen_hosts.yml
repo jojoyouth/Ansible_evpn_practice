@@ -1,0 +1,15 @@
+---
+- name: gen_hosts
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  tasks:
+    - name: use hosts.j2
+      template:
+        src: ../templates/hosts.j2
+        dest: /etc/hosts
+        owner: root
+        group: root
+        mode: '0644'
+      become: true
+...

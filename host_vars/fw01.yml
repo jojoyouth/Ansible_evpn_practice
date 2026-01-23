@@ -1,0 +1,5 @@
+mgmt_ip: 10.2.255.109
+vlan101_ip: 192.168.101.252
+vlan102_ip: 192.168.102.252
+vrrp_state: MASTER
+vrrp_priority: 100

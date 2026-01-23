@@ -1,0 +1,50 @@
+---
+# tasks file for common_logic
+- name: Parse Node ID from IP (The Source of Truth)
+  set_fact:
+    my_id: "{{ inventory_hostname[-2:] | int }}"
+- name: Calculate IP Base based on Role
+  set_fact:
+    ip_base_octet: >-
+      {% if 'leaf' in inventory_hostname %}
+        10
+      {% elif 'spine' in inventory_hostname %}
+        20
+      {% elif 'border' in inventory_hostname %}
+        30
+      {% else %}
+        0
+      {% endif %}
+
+- name: Calculate Final Unique ID
+  set_fact:
+    my_id: "{{(ip_base_octet | int) + (inventory_hostname[-2:] | int) }}"  
+      
+- name: Determine Role Type (Odd/Even)
+  set_fact:
+    is_odd: "{{ (my_id | int) %2 !=0 }}"
+
+- name: Calculate ASN based
+  set_fact:
+    my_asn: >-
+      {% if asn_mode == 'static' %}
+        {{ spine_asn }}
+      {% elif asn_mode == 'unique' %}
+        {{ bgp_base_asn | int + ( my_id | int)}}
+      {% elif asn_mode == 'mlag_pair' %}
+        {% set pair_master_id = my_id | int if is_odd else (my_id | int) -1 %}
+        {{ bgp_base_asn | int + pair_master_id}}
+      {% endif %}
+- name: Calculate Mlag Variables
+  set_fact:
+    mlag_master_id: "{{ my_id | int if is_odd else (my_id | int ) -1 }}"
+    mlag_shared_ip: "10.0.1.{{ my_id | int if is_odd else (my_id | int) -1 }}"
+    mlag_backup_ip: "10.10.10.{{ (my_id | int) + 1 if is_odd else (my_id | int) -1 }}"
+    mlag_prio: "{{ 1000 if is_odd else 32768 }}"
+  when: type != 'spine'
+
+- name: Set Loopback IP
+  set_fact:
+    router_id: "10.10.10.{{ my_id }}"
+
+

@@ -1,0 +1,25 @@
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    eth0:
+      addresses:
+        - {{ mgmt_ip }}/24
+      routes:
+        - to: default
+          via: 10.2.255.254
+    eth1: {}
+    eth2: {}
+  bonds:
+    bond0:
+      interfaces: [eth1, eth2]
+      addresses:
+        - {{ data_ip }}/24
+      routes:
+        - to: default
+          via: {{ gateway_ip }}
+      parameters:
+        mode: 802.3ad
+        mii-monitor-interval: 100
+        lacp-rate: fast
+        transmit-hash-policy: layer3+4
